@@ -27,6 +27,8 @@
     .btn { display: block; width: 100%; padding: var(--spacing); margin: calc(var(--spacing)*0.5) 0; font-size: 1rem; border: none; border-radius: 8px; background: var(--color-primary); color: #fff; cursor: pointer; text-align: center; }
     .btn-secondary { background: var(--color-secondary); }
     input { width: 100%; padding: calc(var(--spacing)*0.5); border: 1px solid #ccc; border-radius: 4px; margin-bottom: var(--spacing); font-size: 1rem; }
+    .double-input { display: flex; gap: 4%; }
+    .double-input input { width: 48%; }
     #email-error { color: var(--color-secondary); display: none; margin-top: -0.5rem; margin-bottom: var(--spacing); }
     /* Generating animation */
     #screen-generating { text-align: center; }
@@ -67,24 +69,27 @@
       <button id="btn-age" class="btn" type="button">Next</button>
     </div>
 
-    <!-- Height -->
+    <!-- Height (US) -->
     <div class="screen" id="screen-height">
-      <h2>What is your current height? (cm)</h2>
-      <input id="input-height" type="number" placeholder="e.g. 165" required>
+      <h2>What is your current height?</h2>
+      <div class="double-input">
+        <input id="input-height-ft" type="number" placeholder="ft" required>
+        <input id="input-height-in" type="number" placeholder="in" required>
+      </div>
       <button id="btn-height" class="btn" type="button">Next</button>
     </div>
 
-    <!-- Current Weight -->
+    <!-- Current Weight (lbs) -->
     <div class="screen" id="screen-current-weight">
-      <h2>What is your current weight? (kg)</h2>
-      <input id="input-weight" type="number" placeholder="e.g. 75" required>
+      <h2>What is your current weight? (lbs)</h2>
+      <input id="input-weight-lbs" type="number" placeholder="e.g. 165" required>
       <button id="btn-weight" class="btn" type="button">Next</button>
     </div>
 
-    <!-- Target Weight -->
+    <!-- Target Weight (lbs) -->
     <div class="screen" id="screen-target-weight">
-      <h2>What is your target weight? (kg)</h2>
-      <input id="input-target" type="number" placeholder="e.g. 65" required>
+      <h2>What is your target weight? (lbs)</h2>
+      <input id="input-target-lbs" type="number" placeholder="e.g. 140" required>
       <button id="btn-target" class="btn" type="button">Next</button>
     </div>
 
@@ -132,16 +137,9 @@
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const order = [
-        'screen-cover',
-        'screen-health-goal',
-        'screen-age',
-        'screen-height',
-        'screen-current-weight',
-        'screen-target-weight',
-        'screen-pcos-question',
-        'screen-email',
-        'screen-generating',
-        'screen-result'
+        'screen-cover', 'screen-health-goal', 'screen-age', 'screen-height',
+        'screen-current-weight','screen-target-weight','screen-pcos-question',
+        'screen-email','screen-generating','screen-result'
       ];
       let step = 0;
       const responses = { scores: {}, override: false };
@@ -156,50 +154,32 @@
         show(order[step]);
       }
 
-      // Start
       document.getElementById('btn-start').addEventListener('click', next);
 
-      // Health goal
       document.querySelectorAll('#screen-health-goal .btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          responses.healthGoal = btn.dataset.value;
-          next();
-        });
+        btn.addEventListener('click', () => { responses.healthGoal = btn.dataset.value; next(); });
       });
 
-      // Age
       document.getElementById('btn-age').addEventListener('click', () => {
-        const val = document.getElementById('input-age').value.trim();
-        if (!val) return;
-        responses.age = val;
-        next();
+        const v = document.getElementById('input-age').value.trim(); if (!v) return; responses.age = v; next();
       });
 
-      // Height
       document.getElementById('btn-height').addEventListener('click', () => {
-        const val = document.getElementById('input-height').value.trim();
-        if (!val) return;
-        responses.height = val;
+        const ft = document.getElementById('input-height-ft').value.trim();
+        const inch = document.getElementById('input-height-in').value.trim();
+        if (!ft || !inch) return;
+        responses.height = `${ft}ft ${inch}in`;
         next();
       });
 
-      // Current weight
       document.getElementById('btn-weight').addEventListener('click', () => {
-        const val = document.getElementById('input-weight').value.trim();
-        if (!val) return;
-        responses.currentWeight = val;
-        next();
+        const v = document.getElementById('input-weight-lbs').value.trim(); if (!v) return; responses.currentWeight = v; next();
       });
 
-      // Target weight
       document.getElementById('btn-target').addEventListener('click', () => {
-        const val = document.getElementById('input-target').value.trim();
-        if (!val) return;
-        responses.targetWeight = val;
-        next();
+        const v = document.getElementById('input-target-lbs').value.trim(); if (!v) return; responses.targetWeight = v; next();
       });
 
-      // PCOS question
       document.querySelectorAll('#screen-pcos-question .btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const t = btn.dataset.type;
@@ -209,31 +189,22 @@
         });
       });
 
-      // Email submission
       document.getElementById('btn-email').addEventListener('click', () => {
         const emailEl = document.getElementById('email');
         const email = emailEl.value.trim();
         const err = document.getElementById('email-error');
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.style.display = 'block'; return; }
-        err.style.display = 'none';
-        responses.email = email;
+        err.style.display = 'none'; responses.email = email;
 
-        // Determine type
-        const key = responses.override
-          ? 'postpill'
-          : Object.entries(responses.scores).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'insulin';
+        const key = responses.override ? 'postpill' : Object.entries(responses.scores).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'insulin';
         responses['PCOS Type'] = key;
-
-        // Klaviyo
         window._learnq.push(['identify', { email, ...responses }]);
-        window._learnq.push(['subscribe', { listId: 'URJwDU', email, confirm_optin: false }]);
+        window._learnq.push(['subscribe', { listId:'URJwDU', email, confirm_optin:false }]);
 
-        next(); // to generating
-        // animate
+        next();
         setTimeout(() => document.querySelector('.progress').style.strokeDashoffset = '0', 100);
-        document.querySelectorAll('.steps li').forEach((li,i) => setTimeout(() => li.classList.add('checked'), 1000+i*1000));
-        // redirect
-        setTimeout(() => window.location.href = 'https://pay.rev.cat/ccbolpvxvgnlfzbl/$RCAnonymousID:75481a85939c41cc88b032f54b68ab23', 6000);
+        document.querySelectorAll('.steps li').forEach((li,i)=>setTimeout(()=>li.classList.add('checked'),1000+i*1000));
+        setTimeout(() => window.location.href='https://pay.rev.cat/ccbolpvxvgnlfzbl/$RCAnonymousID:75481a85939c41cc88b032f54b68ab23',6000);
       });
     });
   </script>
