@@ -30,17 +30,6 @@
     .double-input { display: flex; gap: 4%; }
     .double-input input { width: 48%; }
     #email-error { color: var(--color-secondary); display: none; margin-top: -0.5rem; margin-bottom: var(--spacing); }
-    /* Generating animation */
-    #screen-generating { text-align: center; }
-    .progress-circle { width: 100px; height: 100px; margin: 1rem auto; }
-    .progress-circle svg { transform: rotate(-90deg); }
-    .progress-circle circle { fill: none; stroke-width: 10; stroke: #ccc; }
-    .progress-circle .progress { stroke: var(--color-primary); stroke-dasharray: 314; stroke-dashoffset: 314; transition: stroke-dashoffset 2s linear; }
-    .steps { text-align: left; margin: 1rem auto; max-width: 300px; list-style: none; padding: 0; }
-    .steps li { display: flex; align-items: center; margin-bottom: 0.75rem; opacity: 0.3; transition: opacity 0.5s ease-in; }
-    .steps li.checked { opacity: 1; }
-    .steps li::before { content: '✓'; width: 1.5rem; color: var(--color-secondary); font-weight: bold; margin-right: 0.5rem; visibility: hidden; }
-    .steps li.checked::before { visibility: visible; }
   </style>
 </head>
 <body>
@@ -110,102 +99,65 @@
       <button id="btn-email" class="btn" type="button">Generate PCOS Meal Plans</button>
     </div>
 
-    <!-- Generating -->
-    <div class="screen" id="screen-generating">
-      <h2>Creating your meal plans...</h2>
-      <div class="progress-circle">
-        <svg viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="50"></circle>
-          <circle class="progress" cx="50" cy="50" r="50"></circle>
-        </svg>
-      </div>
-      <ul class="steps">
-        <li>Gathering your data</li>
-        <li>Generating ingredients list</li>
-        <li>Curating based on PCOS type</li>
-        <li>Creating personalized meal plans</li>
-      </ul>
-    </div>
-
     <!-- Result -->
     <div class="screen" id="screen-result">
-      <h2>Your meal plan is ready!</h2>
-      <p>We've sent your customized PCOS meal plans to your inbox.</p>
+      <h2>Your meal plan is on its way!</h2>
+      <p>Check your email for your personalized plan.</p>
     </div>
   </div>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const order = [
-        'screen-cover', 'screen-health-goal', 'screen-age', 'screen-height',
+        'screen-cover','screen-health-goal','screen-age','screen-height',
         'screen-current-weight','screen-target-weight','screen-pcos-question',
-        'screen-email','screen-generating','screen-result'
+        'screen-email','screen-result'
       ];
       let step = 0;
       const responses = { scores: {}, override: false };
-
-      function show(id) {
+      const show = id => {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(id).classList.add('active');
-      }
+      };
+      const next = () => show(order[++step]);
 
-      function next() {
-        step++;
-        show(order[step]);
-      }
+      document.getElementById('btn-start').onclick = next;
 
-      document.getElementById('btn-start').addEventListener('click', next);
-
-      document.querySelectorAll('#screen-health-goal .btn').forEach(btn => {
-        btn.addEventListener('click', () => { responses.healthGoal = btn.dataset.value; next(); });
+      document.querySelectorAll('#screen-health-goal .btn').forEach(btn => btn.onclick = () => {
+        responses.healthGoal = btn.dataset.value; next();
       });
 
-      document.getElementById('btn-age').addEventListener('click', () => {
+      document.getElementById('btn-age').onclick = () => {
         const v = document.getElementById('input-age').value.trim(); if (!v) return; responses.age = v; next();
-      });
-
-      document.getElementById('btn-height').addEventListener('click', () => {
+      };
+      document.getElementById('btn-height').onclick = () => {
         const ft = document.getElementById('input-height-ft').value.trim();
         const inch = document.getElementById('input-height-in').value.trim();
         if (!ft || !inch) return;
-        responses.height = `${ft}ft ${inch}in`;
-        next();
-      });
-
-      document.getElementById('btn-weight').addEventListener('click', () => {
+        responses.height = `${ft}ft ${inch}in`; next();
+      };
+      document.getElementById('btn-weight').onclick = () => {
         const v = document.getElementById('input-weight-lbs').value.trim(); if (!v) return; responses.currentWeight = v; next();
-      });
-
-      document.getElementById('btn-target').addEventListener('click', () => {
+      };
+      document.getElementById('btn-target').onclick = () => {
         const v = document.getElementById('input-target-lbs').value.trim(); if (!v) return; responses.targetWeight = v; next();
+      };
+      document.querySelectorAll('#screen-pcos-question .btn').forEach(btn => btn.onclick = () => {
+        const t = btn.dataset.type; if (t==='postpill') responses.override=true; else if(t) responses.scores[t]=(responses.scores[t]||0)+1; next();
       });
 
-      document.querySelectorAll('#screen-pcos-question .btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const t = btn.dataset.type;
-          if (t === 'postpill') responses.override = true;
-          else if (t) responses.scores[t] = (responses.scores[t]||0) + 1;
-          next();
-        });
-      });
-
-      document.getElementById('btn-email').addEventListener('click', () => {
-        const emailEl = document.getElementById('email');
-        const email = emailEl.value.trim();
+      document.getElementById('btn-email').onclick = () => {
+        const emailEl = document.getElementById('email'); const email = emailEl.value.trim();
         const err = document.getElementById('email-error');
-        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.style.display = 'block'; return; }
-        err.style.display = 'none'; responses.email = email;
-
-        const key = responses.override ? 'postpill' : Object.entries(responses.scores).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'insulin';
+        if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){err.style.display='block';return;}err.style.display='none';
+        responses.email = email;
+        const key = responses.override ? 'postpill' : Object.entries(responses.scores).sort((a,b)=>b[1]-a[1])[0]?.[0]||'insulin';
         responses['PCOS Type'] = key;
-        window._learnq.push(['identify', { email, ...responses }]);
-        window._learnq.push(['subscribe', { listId:'URJwDU', email, confirm_optin:false }]);
-
-        next();
-        setTimeout(() => document.querySelector('.progress').style.strokeDashoffset = '0', 100);
-        document.querySelectorAll('.steps li').forEach((li,i)=>setTimeout(()=>li.classList.add('checked'),1000+i*1000));
-        setTimeout(() => window.location.href='https://pay.rev.cat/ccbolpvxvgnlfzbl/$RCAnonymousID:75481a85939c41cc88b032f54b68ab23',6000);
-      });
+        window._learnq.push(['identify',{email,...responses}]);
+        window._learnq.push(['subscribe',{listId:'URJwDU',email,confirm_optin:false}]);
+        // direct redirect
+        window.location.href = 'https://pay.rev.cat/ccbolpvxvgnlfzbl/$RCAnonymousID:75481a85939c41cc88b032f54b68ab23';
+      };
     });
   </script>
 </body>
